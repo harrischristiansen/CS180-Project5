@@ -80,7 +80,11 @@ public class SafeWalkServer implements Runnable {
             
             // Check Request Validity
             if(checkRequest(request)) { // Request Valid
-                respondToClient(client);
+	            if(request.charAt(0) == ':') { // Request starts with :
+		            handleCommand(request);
+				} else {
+                	respondToClient(client,request);
+				}
             }
             
             // Close Stream
@@ -114,7 +118,7 @@ public class SafeWalkServer implements Runnable {
         return true;
     }
     
-    public void respondToClient(Socket client) throws IOException {
+    public void respondToClient(Socket client, String request) throws IOException {
         try {
             // Create Output Stream
             PrintWriter out = new PrintWriter(client.getOutputStream());
@@ -128,5 +132,9 @@ public class SafeWalkServer implements Runnable {
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+    
+    public void handleCommand(String command) {
+	    
     }
 }
