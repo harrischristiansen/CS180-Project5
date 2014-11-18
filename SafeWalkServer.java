@@ -79,17 +79,19 @@ public class SafeWalkServer implements Runnable {
             // Read Client String
             String request = (String) in.readLine();
             
+            // Close Stream
+            in.close();
+            
             // Check Request Validity
             if(checkRequest(request)) { // Request Valid
 	            if(request.charAt(0) == ':') { // Request starts with :
 		            handleCommand(client,request);
 				} else {
-                	respondToClient(client,request);
+                	handleRequest(client,request);
 				}
-            }
-            
-            // Close Stream
-            in.close();
+            } else {
+	            client.close(); // Invalid Command, Close Client
+	        }
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -120,25 +122,118 @@ public class SafeWalkServer implements Runnable {
     }
     
     
-    public void respondToClient(Socket client, String request) throws IOException {
+    public void handleRequest(Socket client, String request) throws IOException {
+	    String[] requestList = string.split(",");
+	    
         try {
-            // Create Output Stream
-            PrintWriter out = new PrintWriter(client.getOutputStream());
-            out.flush();
-            
-            // Respond
-            
-            
-            // Close Stream
-            out.close();
-            
-            client.close(); // Close Socket
+	        // Check if match in que
+	        for (int i = 0; i < requestQue.size(); i++) {
+		        if (requestQue.get(i).from.equals(requestList[1])) { // FROM Locations Match
+			        if (requestQue.get(i).to.equals(requestList[2])) { // To Locations Match
+				        respondToClient(client, i);
+				    }
+				    if (requestQue.get(i).to.equals("*") && !requestList[2].equals("*")) { // Que Is Helper
+					    respondToClient(client, i);
+					}
+				    if (!requestQue.get(i).to.equals("*") && requestList[2].equals("*")) { // Requester Is Helper
+					    respondToClient(client, i);
+					}
+			    }
+		    }
+		    
+		    // No Match, Add To Que
+	        requestQue.add(new requestQueObject(requestList, client));
+	        
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
     
+    public void respondToClient(Socket client, int queIndex) {
+        // Create Output Streams
+        PrintWriter outQue = new PrintWriter(requestQue.get(queIndex).client.getOutputStream());
+        outQue.flush();
+        PrintWriter outReq = new PrintWriter(client.getOutputStream());
+        outReq.flush();
+        
+        outQue.print();
+        outReq.print();
+        
+        outQue.close(); // Close Stream
+        outReq.close(); // Close Stream
+        requestQue.get(queIndex).client.close(); // Close Que Socket
+        requestQue.remove(queIndex); // Remove Que Person From Que
+        client.close(); // Close Requester Socket
+	}
+    
     public void handleCommand(Socket client, String command) {
+	    if (command.equals(":LIST_PENDING_REQUESTS")) {
+		    listPendingRequests(client);
+		} else if (command.equals(":RESET")) {
+			resetServer(client);
+		} else if (command.equals(":SHUTDOWN")) {
+			shutdownServer(client);
+		}
 	    client.close(); // Close Socket
     }
+    
+    public void listPendingRequests(Socket client) {
+		// Create Output Stream
+		PrintWriter out = new PrintWriter(client.getOutputStream());
+		out.flush();
+		
+		out.print("[");
+	    for (int i = 0; i < requestQue.size(); i++) {
+			out.print("["+requestQue.get(i).name+", "+requestQue.get(i).from+", "+requestQue.get(i).to+", "+requestQue.get(i).type+"]");
+			if(i != requestQue.size()-1) {
+				out.print(", ");
+			}
+		}
+		out.print("]")
+		
+		out.close(); // Close Stream
+	}
+	
+	public void resetServer(Socket client) {
+		for (int i = 0; i < requestQue.size(); i++) {
+			// Open Stream
+			PrintWriter out = new PrintWriter(requestQue.get(i).client.getOutputStream());
+			out.flush();
+			
+			out.print("ERROR: connection reset"); // Send ERROR: connection reset
+			
+			out.close(); // Close Stream
+			requestQue.get(i).client.close(); // Close Client
+			requestQue.remove(i); // Remove Client From Que
+		}
+		
+		// Respond Success To Command Origin Client
+		PrintWriter out = new PrintWriter(client.getOutputStream());
+		out.flush();
+		out.print("RESPONSE: success");
+		out.close(); // Close Stream
+		// Client Will Be Closed In HandleCommand
+	}
+	
+	public void shutdownServer(Socket client) {
+		resetServer(client);
+		
+		// TO-DO: Shutdown Server
+	}
+}
+
+public class requestQueObject {
+	public final String name;
+	public final String from;
+	public final String to;
+	public final String type;
+	public final Socket client;
+	
+	public requestQueObject(String[] requestList, Socket theClient) {
+		name = requestList[0];
+		from = requestList[1];
+		to = requestList[2];
+		type = requestList[3];
+		client = theClient;
+	}
 }
