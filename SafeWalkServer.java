@@ -23,7 +23,8 @@ public class SafeWalkServer implements Runnable {
 	        }
 	        
 	        // Handle Connections
-	        new Thread(server).start();
+	        Thread serverThread = new Thread(server);
+	        serverThread.start();
         } catch (IOException e) {
             e.printStackTrace();
     	}
@@ -50,7 +51,7 @@ public class SafeWalkServer implements Runnable {
     public SafeWalkServer() throws IOException {
 	    requestQue = new ArrayList<RequestQueObject>();
 	    try {
-	        ss = new ServerSocket();
+	        ss = new ServerSocket(0);
 	        ss.setReuseAddress(true);
 	        System.out.println("Port not specified. Using free port " + getLocalPort() + ".");
     	} catch (IOException e) {
@@ -62,9 +63,10 @@ public class SafeWalkServer implements Runnable {
         return ss.getLocalPort();
     }
     
+    private boolean serverRunning = true;
     public void run() {
 	    try {
-	        while (true) {
+	        while (serverRunning) {
 	            Socket client = ss.accept(); // Wait For Socket Connection
 	            handleClient(client); // Handle Client
 	        }
@@ -80,9 +82,6 @@ public class SafeWalkServer implements Runnable {
             
             // Read Client String
             String request = (String) in.readLine();
-            
-            // Close Stream
-            in.close();
             
             // Check Request Validity
             if(checkRequest(request)) { // Request Valid
@@ -132,12 +131,15 @@ public class SafeWalkServer implements Runnable {
 		        if (requestQue.get(i).from.equals(requestList[1])) { // FROM Locations Match
 			        if (requestQue.get(i).to.equals(requestList[2])) { // To Locations Match
 				        respondToClient(client, i);
+				        return;
 				    }
 				    if (requestQue.get(i).to.equals("*") && !requestList[2].equals("*")) { // Que Is Helper
 					    respondToClient(client, i);
+					    return;
 					}
 				    if (!requestQue.get(i).to.equals("*") && requestList[2].equals("*")) { // Requester Is Helper
 					    respondToClient(client, i);
+					    return;
 					}
 			    }
 		    }
@@ -235,7 +237,7 @@ public class SafeWalkServer implements Runnable {
 		try {
 			resetServer(client);
 			
-			// TO-DO: Shutdown Server
+			serverRunning = false; // Shutdown Server
 		} catch (IOException e) {
             e.printStackTrace();
         }
