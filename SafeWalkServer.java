@@ -90,8 +90,12 @@ public class SafeWalkServer implements Runnable {
 				} else {
                 	handleRequest(client,request);
 				}
-            } else {
-	            client.close(); // Invalid Command, Close Client
+            } else { // Invalid Request, Close Client
+	            PrintWriter out = new PrintWriter(client.getOutputStream());
+				out.flush();
+				out.print("ERROR: invalid request");
+				out.close();
+	            client.close();
 	        }
         } catch (IOException e) {
             e.printStackTrace();
@@ -129,16 +133,16 @@ public class SafeWalkServer implements Runnable {
 	        // Check if match in que
 	        for (int i = 0; i < requestQue.size(); i++) {
 		        if (requestQue.get(i).from.equals(requestList[1])) { // FROM Locations Match
-			        if (requestQue.get(i).to.equals(requestList[2])) { // To Locations Match
-				        respondToClient(client, i);
+			        if (requestQue.get(i).to.equals(requestList[2]) && !requestList[2].equals("*")) { // To Locations Match, Not Helpers
+				        respondToClient(client, request, i);
 				        return;
 				    }
 				    if (requestQue.get(i).to.equals("*") && !requestList[2].equals("*")) { // Que Is Helper
-					    respondToClient(client, i);
+					    respondToClient(client, request, i);
 					    return;
 					}
 				    if (!requestQue.get(i).to.equals("*") && requestList[2].equals("*")) { // Requester Is Helper
-					    respondToClient(client, i);
+					    respondToClient(client, request, i);
 					    return;
 					}
 			    }
@@ -151,7 +155,7 @@ public class SafeWalkServer implements Runnable {
         }
     }
     
-    public void respondToClient(Socket client, int queIndex) throws IOException {
+    public void respondToClient(Socket client, String request, int queIndex) throws IOException {
 	    try {
 	        // Create Output Streams
 	        PrintWriter outQue = new PrintWriter(requestQue.get(queIndex).client.getOutputStream());
@@ -159,8 +163,8 @@ public class SafeWalkServer implements Runnable {
 	        PrintWriter outReq = new PrintWriter(client.getOutputStream());
 	        outReq.flush();
 	        
-	        outQue.print("SOMETHING OUT");
-	        outReq.print("SOMETHING OUT");
+	        outQue.print("RESPONSE: "+request); // Output Requester Person To Que
+	        outReq.print("RESPONSE: "+requestQue.get(queIndex).toString()); // Output Que Person To Requester
 	        
 	        outQue.close(); // Close Stream
 	        outReq.close(); // Close Stream
@@ -257,5 +261,9 @@ class RequestQueObject {
 		to = requestList[2];
 		type = requestList[3];
 		client = theClient;
+	}
+	
+	public String toString() {
+		return name+","+from+","+to+","+type;
 	}
 }
