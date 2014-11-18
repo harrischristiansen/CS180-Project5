@@ -9,6 +9,7 @@
 
 import java.io.*;
 import java.net.*;
+import java.util.*;
 
 public class SafeWalkServer implements Runnable {
     public static void main(String[] args) {
@@ -31,9 +32,11 @@ public class SafeWalkServer implements Runnable {
     }
     
     private ServerSocket ss;
+    private ArrayList requestQue;
     
     ///// Constructors /////
     public SafeWalkServer(int port) throws IOException { // Complete
+	    requestQue = new ArrayList();
         try {
             if (port < 1025 || port > 65535) { // Validate Port Number
                 System.out.println("ERROR: Invalid Port Number");
@@ -42,31 +45,29 @@ public class SafeWalkServer implements Runnable {
             
             ss = ServerSocket(port);
             ss.setReuseAddress(true);
-        } catch {
-            (IOException e)
+        } catch (IOException e) {}
                 e.printStackTrace();
         }
     }
     public SafeWalkServer() throws IOException { // Complete
-        try {
-            if {
-        ss = ServerSocket();
-        ss.setReuseAddress(true);
-        System.out.println("Port not specified. Using free port " + getLocalPort() + ".")
-    }
-     } catch {
-        (IOException e)
+	    requestQue = new ArrayList();
+	    try {
+	        ss = ServerSocket();
+	        ss.setReuseAddress(true);
+	        System.out.println("Port not specified. Using free port " + getLocalPort() + ".")
+    	} catch (IOException e) {
             e.printStackTrace();
+    	}
     }
-        }
+    
     public int getLocalPort() { // Complete
         return ss.getLocalPort();
+    }
     
     public void run() {
         while (true) {
             Socket client = ss.accept(); // Wait For Socket Connection
-            handleClient(client); // Repond To Client
-            client.close(); // Closes Socket
+            handleClient(client); // Handle Client
         }
     }
     
@@ -81,7 +82,7 @@ public class SafeWalkServer implements Runnable {
             // Check Request Validity
             if(checkRequest(request)) { // Request Valid
 	            if(request.charAt(0) == ':') { // Request starts with :
-		            handleCommand(request);
+		            handleCommand(client,request);
 				} else {
                 	respondToClient(client,request);
 				}
@@ -118,6 +119,7 @@ public class SafeWalkServer implements Runnable {
         return true;
     }
     
+    
     public void respondToClient(Socket client, String request) throws IOException {
         try {
             // Create Output Stream
@@ -129,12 +131,14 @@ public class SafeWalkServer implements Runnable {
             
             // Close Stream
             out.close();
+            
+            client.close(); // Close Socket
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
     
-    public void handleCommand(String command) {
-	    
+    public void handleCommand(Socket client, String command) {
+	    client.close(); // Close Socket
     }
 }
